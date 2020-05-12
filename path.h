@@ -10,6 +10,7 @@
 #endif
 #include <cstdio>
 
+#include <SDL_mixer.h>
 #define GLM_FORCE_RADIANS
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -24,36 +25,60 @@
 #include <deque>
 
 #include "Enemy.h"
-#include "KDTree.h"
 #include "Roadmap.h"
-
+#include "tower.h"
+#include "EconSystem.h"
 
 class SPath
 {
 public:
 
-	// Attributes
-	int numEnemy = 1;
-
+	// Enemy
+	int numEnemy;
+	std::vector<Enemy*> enemys_;
+	Roadmap* roadmap_;
 
 	// Obstacles
+	int numObstacle;
 	std::vector<glm::vec2> o_pos;
 	std::vector<float> o_radius;
+	std::vector<bool> o_locked;
+
+	// Tower
+	int numTower;
+	std::vector<Tower*> towers_;
 
 	// General 
-	float* vertices_;
-	Roadmap* roadmap_;
-	std::vector<Enemy*> enemys_;
+	float* vertices_;	
 	int n_edges_;
+	Mix_Chunk * explosion = Mix_LoadWAV("audio/Explosion3.wav");
+	Mix_Chunk* ohno = Mix_LoadWAV("audio/ohno.wav");
+
+	int PICKED = -1;
+	bool BUILD_MOD = false;
+	
+	EconSystem* econ_system_;
 
 	SPath(int num_o);
 	void init();
 	void update(float dt);
 	void March();
 	void DeleteAll();
-	
+
+	void buildTower(int picked,int type);
+	void buildObstacle();
+	void largeObstacle();
+	void shrinkObstacle();
+	void nextObstacle();
+	void lastObstacle();
+	void moveObstacle(int type);
+	void obsLock();
+	void deleteObstacle();
+
+	void upgradeTower();
+
 private:
-	float max_speed = 3.f;
+	float max_speed = 1.f;
 	float agent_radius = 0.5f;
 	float goal_speed = 10;
 	float goal_cof = 40;

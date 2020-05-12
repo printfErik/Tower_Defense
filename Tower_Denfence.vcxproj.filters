@@ -21,9 +21,6 @@
     <ClInclude Include="Enemy.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="KDTree.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
     <ClInclude Include="path.h">
       <Filter>头文件</Filter>
     </ClInclude>
@@ -39,6 +36,15 @@
     <ClInclude Include="Roadmap.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="tower.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="bullet.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="EconSystem.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad\glad.c">
@@ -50,9 +56,6 @@
     <ClCompile Include="Enemy.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="KDTree.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -60,6 +63,15 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Roadmap.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="tower.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="bullet.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="EconSystem.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

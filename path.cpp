@@ -57,6 +57,14 @@ SPath::SPath(int num_o)
 	o_radius.push_back(3.f);
 	o_radius.push_back(3.f);
 	o_radius.push_back(2.f);
+
+	o_locked.push_back(false);
+	o_locked.push_back(false);
+	o_locked.push_back(false);
+	o_locked.push_back(false);
+	o_locked.push_back(false);
+	o_locked.push_back(false);
+
 	/*
 	for (int i = 0; i < numEnemy; i++)
 	{
@@ -66,6 +74,10 @@ SPath::SPath(int num_o)
 	*/
 	
 	numEnemy = 0;
+	numTower = 0;
+	numObstacle = o_radius.size();
+
+	econ_system_ = new EconSystem();
 	
 }
 
@@ -92,14 +104,199 @@ void SPath::DeleteAll()
 
 }
 
+void SPath::buildTower(int picked,int type)
+{
+	if (BUILD_MOD)
+	{
+		if (numObstacle == 0)
+		{
+			std::cout << " \n No obstacles, can't build tower. \n";
+			return;
+		}
+
+		if (econ_system_->global_net > econ_system_->tower1_cost)
+		{
+			glm::vec3 t_pos = glm::vec3(o_pos[picked].x, 4.9f, o_pos[picked].y);
+
+			Tower* new_tower = new Tower(type, t_pos);
+			numTower++;
+			towers_.push_back(new_tower);
+
+			econ_system_->global_net -= econ_system_->tower1_cost;
+			std::cout << " \n Tower constructed, good choice!!! \n";
+		}
+		else
+		{
+			std::cout << " \n No money, earn more!!!!! \n";
+		}
+	}
+	else
+	{
+		return;
+	}
+
+}
+
+void SPath::buildObstacle()
+{
+	if (BUILD_MOD)
+	{
+		if (econ_system_->global_net > econ_system_->obstacle_cost)
+		{
+			//OBSTACLE_NUMBER++;
+			numObstacle++;
+			//PICKED = OBSTACLE_NUMBER - 1;
+			o_pos.push_back(glm::vec2(0.f, 0.f));
+			o_radius.push_back(2.f);
+			o_locked.push_back(false);
+			PICKED = numObstacle - 1;
+		}
+		else
+		{
+			std::cout << " \n No money, earn more!!!!! \n";
+		}
+	}
+	else
+	{
+		return;
+	}
+	
+}
+
+void SPath::largeObstacle()
+{
+	if (BUILD_MOD && !o_locked[PICKED])
+	{
+		o_radius[PICKED] += 0.2;
+		if (o_radius[PICKED] > 4) o_radius[PICKED] = 4;
+	}
+}
+
+void SPath::shrinkObstacle()
+{
+	if (BUILD_MOD && !o_locked[PICKED])
+	{
+		o_radius[PICKED] -= 0.2;
+		if (o_radius[PICKED] < 0.5) o_radius[PICKED] = 0.5;
+	}
+}
+
+void SPath::nextObstacle()
+{
+	if (BUILD_MOD)
+	{
+		PICKED++;
+		if (PICKED > numObstacle-1)
+		{
+			PICKED = numObstacle - 1;
+		}
+	}
+}
+
+void SPath::lastObstacle()
+{
+	if (BUILD_MOD)
+	{
+		PICKED--;
+		if (PICKED < 0)
+		{
+			PICKED = 0;
+		}
+	}
+}
+
+void SPath::moveObstacle(int type)
+{
+	if (BUILD_MOD && !o_locked[PICKED])
+	{
+		if (type == 1)
+		{
+			o_pos[PICKED].y -= 0.3;
+		}
+		else if (type == 2)
+		{
+			o_pos[PICKED].x -= 0.3;
+		}
+		else if (type == 3)
+		{
+			o_pos[PICKED].x += 0.3;
+		}
+		else if (type == 4)
+		{
+			o_pos[PICKED].y += 0.3;
+		}
+	}
+}
+
+void SPath::obsLock()
+{
+	if (BUILD_MOD)
+	{
+		Roadmap new_roadmap(o_pos, o_radius);
+		new_roadmap.PRM();
+		new_roadmap.searchPath(1.f);
+		if (!new_roadmap.canReachGoal())
+		{
+			std::cout << "\n Can not build obstacle, you cheat by blocking the way!!!!! \n";
+		}
+		else
+		{
+			o_locked[PICKED] = true;
+		}
+		
+	}	
+}
+
+void SPath::deleteObstacle()
+{
+	if (BUILD_MOD)
+	{
+		o_pos.erase(o_pos.begin() + PICKED);
+		o_radius.erase(o_radius.begin() + PICKED);
+		o_locked.erase(o_locked.begin() + PICKED);
+		numObstacle--;
+		PICKED = numObstacle - 1;
+	}
+}
+
+void SPath::upgradeTower()
+{
+	if (BUILD_MOD)
+	{
+		towers_[0]->upgrade();
+	}
+}
 void SPath::update(float dt)
 {
 
-	for (int i = 0; i < numEnemy; i++)
+	for (int i = numEnemy - 1; i >= 0; i--)
 	{
+
+		if (enemys_[i]->isDead)
+		{
+			float timer2 = SDL_GetTicks();
+			if (timer2 - enemys_[i]->timer1 > 1000)
+			{
+				numEnemy--;
+				enemys_.erase(enemys_.begin() + i);
+			}
+			continue;
+		}
+
+		if ( enemys_[i]->health <= 0)
+		{
+			enemys_[i]->isDead = true;
+			Mix_PlayChannel(-1, explosion, 0);
+			econ_system_->global_net += econ_system_->enemy_destroy_earn;
+			enemys_[i]->timer1 = SDL_GetTicks();
+			continue;
+		}
 
 		if (enemys_[i]->eCurrent == 0)
 		{
+			Mix_PlayChannel(-1, ohno, 0);
+			numEnemy--;
+			enemys_.erase(enemys_.begin() + i);
 			continue;
 		}
 
@@ -152,60 +349,39 @@ void SPath::update(float dt)
 				sep_force += j_force;
 			}
 		}
-		/*
-		// cohesion
-		glm::vec2 coh_force(0);
-		glm::vec2 center(0);
-		int count = 0;
-		for (int j = 0; j < numEnemy; j++)
-		{
-			if (i == j) continue;
-			if (glm::length(pos[i] - pos[j]) < coh_r) {
-				count++;
-				center += pos[j];
-			}
-		}
-		if (count)
-		{
-			center /= (float)count;
-			coh_force = coh_cof * (center - pos[i]);
-		}
-
-		// alignment
-		glm::vec2 alig_force(0);
-		glm::vec2 avg_vel(0);
-		count = 0;
-		for (int j = 0; j < numEnemy; j++)
-		{
-			if (i == j) continue;
-			if (glm::length(pos[i] - pos[j]) < alig_r)
-			{
-				count++;
-				avg_vel += vel[j];
-			}
-		}
-		if (count)
-		{
-			alig_force = alig_cof * avg_vel / (float)count;
-		}
-		*/
+		
 		
 		glm::vec2 total_force = goal_force + sep_force; //+ coh_force + alig_force;
 
 		enemys_[i]->eVel += dt * total_force;
 
+		glm::vec2 norvel = glm::normalize(enemys_[i]->eVel);
+
 		if (glm::length(enemys_[i]->eVel) > max_speed)
 		{
-			enemys_[i]->eVel = max_speed * glm::normalize(enemys_[i]->eVel);
+			enemys_[i]->eVel = max_speed * norvel;
 		}
+
+		if (!enemys_[i]->locked)
+		{
+			float coszeta, zeta;
+			coszeta = glm::dot(norvel, glm::normalize(enemys_[i]->dir));
+			zeta = acos(coszeta);
+
+			enemys_[i]->rotation = zeta;
+
+			enemys_[i]->locked = true;
+		}
+		
 
 		enemys_[i]->ePos += dt * enemys_[i]->eVel;
 
 
-		if (sqrt(pow(enemys_[i]->ePos.x - next_vec.x, 2) + pow(enemys_[i]->ePos.y - next_vec.y, 2)) < 0.05)
+		if (sqrt(pow(enemys_[i]->ePos.x - next_vec.x, 2) + pow(enemys_[i]->ePos.y - next_vec.y, 2)) < 0.07)
 		{
 			enemys_[i]->ePos = next_vec;
 			enemys_[i]->eCurrent -= 1;
+			enemys_[i]->locked = false;
 		}
 
 		// Fix collisions
@@ -215,6 +391,27 @@ void SPath::update(float dt)
 			if (glm::length(enemys_[i]->ePos - enemys_[j]->ePos) < 2 * agent_radius)
 			{
 				enemys_[i]->ePos = enemys_[j]->ePos + 2 * agent_radius * glm::normalize(enemys_[i]->ePos - enemys_[j]->ePos);
+			}
+		}
+	}
+
+	for (int t = 0; t < numTower; t++)
+	{
+		towers_[t]->update(dt);
+		if (towers_[t]->hasTarget())
+		{
+			continue;
+		}
+
+		for (int e = 0; e < numEnemy; e++)
+		{
+			float dx, dy;
+			dx = enemys_[e]->ePos.x - towers_[t]->tower_pos.x;
+			dy = enemys_[e]->ePos.y - towers_[t]->tower_pos.z;
+			if (!enemys_[e]->isDead && dx * dx + dy * dy < towers_[t]->radius_ )
+			{
+				towers_[t]->set_target(enemys_[e]);
+				break;
 			}
 		}
 	}

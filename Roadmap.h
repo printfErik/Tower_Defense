@@ -47,6 +47,13 @@ public:
 
 	int num_edges_;
 
+	bool canReachGoal() {
+		auto src_flag = std::find(Path.begin(), Path.end(), 0);
+		auto goal_flag = std::find(Path.begin(), Path.end(), 1);
+
+		return (src_flag != Path.end()) && (goal_flag != Path.end());
+	};
+
 private:
 	// Obstacles
 	std::vector<glm::vec2> o_pos_;
