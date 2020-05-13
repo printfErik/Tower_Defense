@@ -28,6 +28,7 @@
 #include "Roadmap.h"
 #include "tower.h"
 #include "EconSystem.h"
+#include "Particle.h"
 
 class SPath
 {
@@ -47,6 +48,10 @@ public:
 	// Tower
 	int numTower;
 	std::vector<Tower*> towers_;
+
+	// Particles
+	Particle* particle_;
+	bool FIREON;
 
 	// General 
 	float* vertices_;	
@@ -76,6 +81,9 @@ public:
 	void deleteObstacle();
 
 	void upgradeTower();
+
+
+	void fire();
 
 private:
 	float max_speed = 1.f;

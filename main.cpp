@@ -25,6 +25,7 @@
 #include "tiny_obj_loader.h"
 #include "path.h"
 
+#include "text.h"
 #include <iostream>
 
 
@@ -33,12 +34,18 @@ using namespace std;
 int screen_width = 1280;
 int screen_height = 980;
 
+int phase = 0;
+bool can_enter_next_phase = false;
+size_t enemy_to_be_added = 10;
+
 bool SHOW_PATH = false;
 bool APP_START = false;
 int AGENT_NUMBER = 0;
 int OBSTACLE_NUMBER = 6;
-GLuint vao[9];
-GLuint vbo[9];
+GLuint vao[10];
+GLuint vbo[10];
+
+GLuint fontVAO, fontVBO;
 
 // Shader sources
 const GLchar* vertexSource =
@@ -94,19 +101,39 @@ const GLchar* fragmentSource =
 "   outColor = vec4(combined, 1.0);"
 "}";
 
+const GLchar* textVertexShaderSource =
+"#version 330 core\n"
+"layout (location=0) in vec4 vertex;"
+"out vec2 texcoord;"
+"uniform mat4 proj;"
+"void main() {"
+"  gl_Position = proj * vec4(vertex.xy, 0.0, 1.0);"
+"  texcoord = vertex.zw;"
+"}";
+
+const GLchar* textFragmentShaderSource =
+"#version 330 core\n"
+"in vec2 texcoord;"
+"out vec4 outColor;"
+"uniform sampler2D tex0;"
+"uniform vec3 textColor;"
+"void main() {"
+"  vec4 sampled = vec4(1.0, 1.0, 1.0, texture(tex0, texcoord).r);"
+"  outColor = vec4(textColor, 1.0) * sampled;"
+"}";
+
 bool fullscreen = false;
 void draw(float dt);
+void drawText(GLuint textShaderProgram);
 
 //Index of where to model, view, and projection matricies are stored on the GPU
-GLint uniModel, uniView, uniProj, uniColor, uniType;
+GLint uniModel, uniView, uniProj, uniColor, uniType, textUniProj;
 
 float aspect; //aspect ratio (needs to be updated if the window is resized)
 Camera* camera;
 SPath* path;
-SDL_Surface* surface;
-SDL_Surface* surface2;
 
-GLuint tex0[2];
+GLuint tex0[3];
 
 int num_verts_cylinder;
 int num_verts_floor;
@@ -116,6 +143,7 @@ int num_verts_sphere;
 int num_verts_AA;
 int num_verts_sp;
 int num_verts_ten;
+int num_verts_square;
 
 std::vector<tinyobj::real_t> loadModel(const char* filename) {
 	std::string inputfile = filename;
@@ -175,6 +203,12 @@ std::vector<tinyobj::real_t> loadModel(const char* filename) {
 		}
 	}
 	return model;
+}
+
+void drawText(GLuint textShaderProgram)
+{
+	Font::renderText(textShaderProgram, "Test!", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8, 0.2));
+	Font::renderText(textShaderProgram, "Smaller!", 625.0f, 525.0f, 0.2f, glm::vec3(0.5, 0.8, 0.2));
 }
 
 void draw(float dt) {
@@ -293,7 +327,7 @@ void draw(float dt) {
 			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 			glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
 			glUniform1i(uniType, 4);
-			glDrawArrays(GL_TRIANGLES, 0, num_verts_tower1);
+			glDrawArrays(GL_TRIANGLES, 0, num_verts_ten);
 
 			for (int b = 0; b < path->towers_[i]->numBullets; b++)
 			{
@@ -304,12 +338,12 @@ void draw(float dt) {
 				model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
 				glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 				glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 0.0, 0.0)));
-				glDrawArrays(GL_TRIANGLES, 0, num_verts_sphere);
+				glDrawArrays(GL_TRIANGLES, 0, num_verts_sp);
 			}
 		}
 	}
 
-
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	glBindVertexArray(vao[0]);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 	model = glm::mat4();
@@ -318,6 +352,8 @@ void draw(float dt) {
 	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
+
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	model = glm::mat4();
 	model = glm::translate(model, glm::vec3(300,0,0));
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
@@ -367,6 +403,25 @@ void draw(float dt) {
 	glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
+
+	if (path->FIREON)
+	{
+		for (int i = 0; i < path->particle_->pos.size(); i++)
+		{
+			glBindTexture(GL_TEXTURE_2D, tex0[2]);
+			glBindVertexArray(vao[9]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[9]);
+			model = glm::mat4();
+			model = glm::translate(model, path->particle_->pos[i]);
+			model = glm::scale(model, 0.2f * (float)path->particle_->size[i] * glm::vec3(1.f, 1.f, 1.f));
+			model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 1, 0));
+			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+			glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
+			glUniform1i(uniType, 2);
+			glDrawArrays(GL_TRIANGLES, 0, num_verts_square);
+		}
+	}
+		
 }
 
 
@@ -374,8 +429,6 @@ int main(int argc, char** argv) {
 
 
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);  //Initialize Graphics (for OpenGL)
-
-
 
 	//Ask SDL to get a recent version of OpenGL (3.2 or greater)
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -404,7 +457,11 @@ int main(int argc, char** argv) {
 	SDL_Window* window = SDL_CreateWindow("Tower_Defence", 100, 100, screen_width, screen_height, SDL_WINDOW_RESIZABLE|SDL_WINDOW_OPENGL);
 	//SDL_Window* window = SDL_CreateWindow("My OpenGL Program",SDL_WINDOWPOS_UNDEFINED,SDL_WINDOWPOS_UNDEFINED,0,0,SDL_WINDOW_FULLSCREEN_DESKTOP|SDL_WINDOW_OPENGL); //Boarderless window "fake" full screen
 
-
+	SDL_Renderer* window_renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+	if (!window_renderer) {
+		std::cerr << "Failed to create renderer!" << std::endl;
+		exit(0);
+	}
 
 	//Create a context to draw in
 	SDL_GLContext context = SDL_GL_CreateContext(window);
@@ -420,31 +477,56 @@ int main(int argc, char** argv) {
 		return -1;
 	}
 
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	// Initialize Font
+	std::string font_name = "./arial.ttf";
+	Font::getInstance()->init(font_name, 48);
+	glDisable(GL_CULL_FACE);
+
 	camera = new Camera(glm::vec3(0.f, 35.f, 38.f), 800.f, 600.f);
 	path = new SPath(OBSTACLE_NUMBER);
 	//path->init();
 
-	surface = SDL_LoadBMP("space.bmp");
+	auto surface = SDL_LoadBMP("space.bmp");
 	
-	
-	glGenTextures(2, tex0);
+	glGenTextures(3, tex0);
 
-	glActiveTexture(GL_TEXTURE0);
+	//glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 
-	// What to do outside 0-1 range
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	// Load the texture into memory
+
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface->w, surface->h, 0, GL_BGRA,
 		GL_UNSIGNED_BYTE, surface->pixels);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
 	SDL_FreeSurface(surface);
 	
+	auto surface2 = SDL_LoadBMP("earth.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[1]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface2->w, surface2->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface2->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface2);
+
+	auto surface3 = SDL_LoadBMP("fire.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[2]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface3->w, surface3->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface3->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface3);
+
 
 	std::vector<tinyobj::real_t> cylinder_model = loadModel("objects/cylinder.obj");
 	num_verts_cylinder = cylinder_model.size() / 8;
@@ -502,8 +584,15 @@ int main(int argc, char** argv) {
 	ten_model_data.reserve(ten_model.size());
 	ten_model_data.insert(ten_model_data.end(), ten_model.begin(), ten_model.end());
 
-	glGenVertexArrays(9, vao);
-	glGenBuffers(9, vbo);
+	std::vector<tinyobj::real_t> square_model = loadModel("objects/square.obj");
+	num_verts_square = square_model.size() / 8;
+	int num_square = num_verts_square;
+	std::vector<tinyobj::real_t> square_model_data;
+	square_model_data.reserve(square_model.size());
+	square_model_data.insert(square_model_data.end(), square_model.begin(), square_model.end());
+
+	glGenVertexArrays(10, vao);
+	glGenBuffers(10, vbo);
 
 	//Load the vertex Shader
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
@@ -551,6 +640,60 @@ int main(int argc, char** argv) {
 	GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
 	GLint normAttrib = glGetAttribLocation(shaderProgram, "inNormal");
 	GLint texAttrib = glGetAttribLocation(shaderProgram, "inTexcoord");
+
+	/**** Create shaders for text ****/
+	//Load the vertex Shader
+	GLuint textVertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(textVertexShader, 1, &textVertexShaderSource, NULL);
+	glCompileShader(textVertexShader);
+
+	//Let's double check the shader compiled 
+	glGetShaderiv(textVertexShader, GL_COMPILE_STATUS, &status);
+	if (!status) {
+		char buffer[512];
+		glGetShaderInfoLog(textVertexShader, 512, NULL, buffer);
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+			"Compilation Error",
+			"Failed to Compile: Check Consol Output.",
+			NULL);
+		printf("Vertex Shader Compile Failed. Info:\n\n%s\n", buffer);
+	}
+
+	GLuint textFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(textFragmentShader, 1, &textFragmentShaderSource, NULL);
+	glCompileShader(textFragmentShader);
+
+	//Double check the shader compiled 
+	glGetShaderiv(textFragmentShader, GL_COMPILE_STATUS, &status);
+	if (!status) {
+		char buffer[512];
+		glGetShaderInfoLog(textFragmentShader, 512, NULL, buffer);
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+			"Compilation Error",
+			"Failed to Compile: Check Consol Output.",
+			NULL);
+		printf("Fragment Shader Compile Failed. Info:\n\n%s\n", buffer);
+	}
+
+	//Join the vertex and fragment shaders together into one program
+	GLuint textShaderProgram = glCreateProgram();
+	glAttachShader(textShaderProgram, textVertexShader);
+	glAttachShader(textShaderProgram, textFragmentShader);
+	glBindFragDataLocation(textShaderProgram, 0, "outColor"); // set output
+	glLinkProgram(textShaderProgram); //run the linker
+	glUseProgram(textShaderProgram);
+
+	// Change texture unit
+	GLint texLoc = glGetUniformLocation(textShaderProgram, "tex0");
+	glUniform1i(texLoc, 1);
+
+	glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
+	textUniProj = glGetUniformLocation(textShaderProgram, "proj");
+	glUniformMatrix4fv(textUniProj, 1, GL_FALSE, glm::value_ptr(projection));
+
+	GLint textShaderPos = glGetAttribLocation(textShaderProgram, "vertex");
+
+	glUseProgram(shaderProgram);
 
 	
 	//################# cylinder ######################
@@ -671,6 +814,22 @@ int main(int argc, char** argv) {
 	glBindVertexArray(vao[8]);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[8]);
 	glBufferData(GL_ARRAY_BUFFER, num_ten * 8 * sizeof(float), &ten_model_data[0], GL_STATIC_DRAW);
+
+	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
+	glEnableVertexAttribArray(posAttrib);
+
+	glVertexAttribPointer(normAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+		(void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(normAttrib);
+
+	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+		(void*)(6 * sizeof(float)));
+	glEnableVertexAttribArray(texAttrib);
+
+	//#################  square ######################
+	glBindVertexArray(vao[9]);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[9]);
+	glBufferData(GL_ARRAY_BUFFER, num_square * 8 * sizeof(float), &square_model_data[0], GL_STATIC_DRAW);
 
 	glVertexAttribPointer(posAttrib, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), 0);
 	glEnableVertexAttribArray(posAttrib);
@@ -837,6 +996,15 @@ int main(int argc, char** argv) {
 			{
 				path->upgradeTower();
 			}
+			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_g)
+			{
+				path->fire();
+			}
+			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_v)
+			{
+				path->FIREON = false;
+			}
+
 			
 		}
 
@@ -845,10 +1013,13 @@ int main(int argc, char** argv) {
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		dt = 0.002;
 		
+		glUseProgram(shaderProgram);
+		glActiveTexture(GL_TEXTURE0);
 		draw(dt);
 
 		//if (saveOutput) Win2PPM(screen_width, screen_height);
 
+		drawText(textShaderProgram);
 
 		SDL_GL_SwapWindow(window); //Double buffering
 
@@ -869,10 +1040,17 @@ int main(int argc, char** argv) {
 	glDeleteShader(fragmentShader);
 	glDeleteShader(vertexShader);
 
-	glDeleteBuffers(9, vbo);
-	glDeleteVertexArrays(9, vao);
+	glDeleteProgram(textShaderProgram);
+	glDeleteShader(textFragmentShader);
+	glDeleteShader(textVertexShader);
+
+	glDeleteBuffers(10, vbo);
+	glDeleteVertexArrays(10, vao);
 
 	SDL_GL_DeleteContext(context);
+	Mix_FreeMusic(backgroundSound);
+	Mix_CloseAudio();
+	SDL_DestroyRenderer(window_renderer);
 	SDL_Quit();
 	return 0;
 }

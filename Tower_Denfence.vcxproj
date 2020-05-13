@@ -70,10 +70,10 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>C:\Development\SDL2_mixer\SDL2_mixer-2.0.4\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\CSCI\Development\SDL2_mixer\SDL2_mixer-2.0.4\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Development\SDL2_mixer\SDL2_mixer-2.0.4\include;$(IncludePath)</IncludePath>
+    <IncludePath>D:\CSCI\Development\SDL2_mixer\SDL2_mixer-2.0.4\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -81,12 +81,12 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Development\SDL2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\CSCI\Development\SDL2\include;D:\CSCI\Development\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>C:\Development\SDL2_mixer\SDL2_mixer-2.0.4\lib\x86;C:\Development\SDL2\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\CSCI\Development\SDL2_mixer\SDL2_mixer-2.0.4\lib\x86;D:\CSCI\Development\SDL2\lib\x86;D:\CSCI\Development\freetype\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_mixer.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -95,12 +95,12 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Development\SDL2\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\CSCI\Development\SDL2\include;D:\CSCI\Development\freetype\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <AdditionalLibraryDirectories>C:\Development\SDL2_mixer\SDL2_mixer-2.0.4\lib\x86;C:\Development\SDL2\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\CSCI\Development\SDL2_mixer\SDL2_mixer-2.0.4\lib\x86;D:\CSCI\Development\SDL2\lib\x86;D:\CSCI\Development\freetype\win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDL2.lib;SDL2main.lib;SDL2_mixer.lib;freetype.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -140,8 +140,10 @@
     <ClInclude Include="Enemy.h" />
     <ClInclude Include="glad\glad.h" />
     <ClInclude Include="glad\khrplatform.h" />
+    <ClInclude Include="Particle.h" />
     <ClInclude Include="path.h" />
     <ClInclude Include="Roadmap.h" />
+    <ClInclude Include="text.h" />
     <ClInclude Include="tiny_obj_loader.h" />
     <ClInclude Include="tower.h" />
   </ItemGroup>
@@ -152,8 +154,10 @@
     <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="glad\glad.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Particle.cpp" />
     <ClCompile Include="path.cpp" />
     <ClCompile Include="Roadmap.cpp" />
+    <ClCompile Include="text.cpp" />
     <ClCompile Include="tower.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

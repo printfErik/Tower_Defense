@@ -37,6 +37,8 @@ public:
 
 
 	Mix_Chunk* laser = Mix_LoadWAV("audio/laser_Shoot4.wav");
+	Mix_Chunk* sp = Mix_LoadWAV("audio/Hit_Hurt.wav");
+	Mix_Chunk* up = Mix_LoadWAV("audio/Powerup5.wav");
 
 	void shot();
 	void update(float dt);

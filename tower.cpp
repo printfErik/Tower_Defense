@@ -15,14 +15,20 @@ Tower::Tower(int type, glm::vec3 t_pos)
 
 void Tower::upgrade()
 {
+	if (tower_level_ > 2)
+	{
+		return;
+	}
+	Mix_PlayChannel(-1, up, 0);
+	tower_level_++;
 	if (T_type_ == 1)
 	{
-		if (tower_level_ > 3)
-		{
-			return;
-		}
 		tower_level_++;
 		frequency_ /= 2.f;
+		radius_ += 50.f;
+	}
+	else if (T_type_ == 1)
+	{
 		radius_ += 100.f;
 	}
 	
@@ -47,6 +53,7 @@ void Tower::shot()
 	}
 	else if (T_type_ == 2)
 	{
+		Mix_PlayChannel(-1, sp, 0);
 		numBullets += 1;
 		Bullet* new_bullet = new Bullet(2, target_);
 		glm::vec3 muzzle = glm::vec3(target_->ePos.x, -3.f, target_->ePos.y);

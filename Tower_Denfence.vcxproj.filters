@@ -45,6 +45,12 @@
     <ClInclude Include="EconSystem.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Particle.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="text.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glad\glad.c">
@@ -72,6 +78,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="EconSystem.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Particle.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="text.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

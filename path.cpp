@@ -78,6 +78,7 @@ SPath::SPath(int num_o)
 	numObstacle = o_radius.size();
 
 	econ_system_ = new EconSystem();
+	FIREON = false;
 	
 }
 
@@ -89,6 +90,14 @@ void SPath::init()
 	roadmap_->searchPath(1.f);
 	path_size_ = roadmap_->Path.size();
 	vertices_ = roadmap_->vertices;
+
+	
+}
+
+void SPath::fire()
+{
+	FIREON = true;
+	particle_ = new Particle(200);
 }
 
 void SPath::March()
@@ -268,6 +277,11 @@ void SPath::upgradeTower()
 }
 void SPath::update(float dt)
 {
+	if (FIREON)
+	{
+		particle_->computePhy(dt);
+	}
+	
 
 	for (int i = numEnemy - 1; i >= 0; i--)
 	{
