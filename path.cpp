@@ -42,7 +42,7 @@ SPath::SPath(int num_o)
 	goal.push_back({ 0, 19.5f });
 	*/
 
-	
+	/*
 	o_pos.push_back(glm::vec2(0.f, 0.f));
 	o_radius.push_back(5.f);
 	
@@ -64,7 +64,7 @@ SPath::SPath(int num_o)
 	o_locked.push_back(false);
 	o_locked.push_back(false);
 	o_locked.push_back(false);
-
+	*/
 	/*
 	for (int i = 0; i < numEnemy; i++)
 	{
@@ -79,6 +79,8 @@ SPath::SPath(int num_o)
 
 	econ_system_ = new EconSystem();
 	FIREON = false;
+
+	game_msg_time = SDL_GetTicks();
 	
 }
 
@@ -97,7 +99,7 @@ void SPath::init()
 void SPath::fire()
 {
 	FIREON = true;
-	particle_ = new Particle(200);
+	particle_ = new Particle(200,0,0,0);
 }
 
 void SPath::March()
@@ -115,11 +117,12 @@ void SPath::DeleteAll()
 
 void SPath::buildTower(int picked,int type)
 {
-	if (BUILD_MOD)
-	{
+	//if (BUILD_MOD)
+	//{
 		if (numObstacle == 0)
 		{
 			std::cout << " \n No obstacles, can't build tower. \n";
+			printMsg("No obstacles, can't build tower.");
 			return;
 		}
 
@@ -133,16 +136,18 @@ void SPath::buildTower(int picked,int type)
 
 			econ_system_->global_net -= econ_system_->tower1_cost;
 			std::cout << " \n Tower constructed, good choice!!! \n";
+			printMsg("Tower constructed, good choice!!!");
 		}
 		else
 		{
 			std::cout << " \n No money, earn more!!!!! \n";
+			printMsg("No money, earn more!!!!!");
 		}
-	}
-	else
-	{
-		return;
-	}
+	//}
+	//else
+	//{
+	//	return;
+	//}
 
 }
 
@@ -159,6 +164,7 @@ void SPath::buildObstacle()
 			o_radius.push_back(2.f);
 			o_locked.push_back(false);
 			PICKED = numObstacle - 1;
+			econ_system_->global_net -= econ_system_->obstacle_cost;
 		}
 		else
 		{
@@ -192,26 +198,26 @@ void SPath::shrinkObstacle()
 
 void SPath::nextObstacle()
 {
-	if (BUILD_MOD)
-	{
+	//if (BUILD_MOD)
+	//{
 		PICKED++;
 		if (PICKED > numObstacle-1)
 		{
 			PICKED = numObstacle - 1;
 		}
-	}
+	//}
 }
 
 void SPath::lastObstacle()
 {
-	if (BUILD_MOD)
-	{
+	//if (BUILD_MOD)
+	//{
 		PICKED--;
 		if (PICKED < 0)
 		{
 			PICKED = 0;
 		}
-	}
+	//}
 }
 
 void SPath::moveObstacle(int type)
@@ -237,8 +243,9 @@ void SPath::moveObstacle(int type)
 	}
 }
 
-void SPath::obsLock()
+bool SPath::obsLock()
 {
+	bool ret = false;
 	if (BUILD_MOD)
 	{
 		Roadmap new_roadmap(o_pos, o_radius);
@@ -247,13 +254,16 @@ void SPath::obsLock()
 		if (!new_roadmap.canReachGoal())
 		{
 			std::cout << "\n Can not build obstacle, you cheat by blocking the way!!!!! \n";
+			printMsg("Can not build obstacle, you cheat by blocking the way!!!!!");
 		}
 		else
 		{
 			o_locked[PICKED] = true;
+			ret = true;
 		}
 		
-	}	
+	}
+	return ret;
 }
 
 void SPath::deleteObstacle()
@@ -270,10 +280,10 @@ void SPath::deleteObstacle()
 
 void SPath::upgradeTower()
 {
-	if (BUILD_MOD)
-	{
+	//if (BUILD_MOD)
+	//{
 		towers_[0]->upgrade();
-	}
+	//}
 }
 void SPath::update(float dt)
 {
@@ -308,6 +318,7 @@ void SPath::update(float dt)
 
 		if (enemys_[i]->eCurrent == 0)
 		{
+			enemys_[i]->isGoal = true;
 			Mix_PlayChannel(-1, ohno, 0);
 			numEnemy--;
 			enemys_.erase(enemys_.begin() + i);

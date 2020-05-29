@@ -1,13 +1,16 @@
 #include "Particle.h"
-Particle::Particle(int n)
+Particle::Particle(int n, float x,float y,float z)
 {
 	srand(static_cast <unsigned> (time(0)));
 	numP = n;
-	acc = glm::vec3(0.f, 30.f, 0.f);
+	acc = glm::vec3(10.f, 10.f, 0.f);
 	genRate = 1000;
+	x_ = x;
+	y_ = y;
+	z_ = z;
 	for (int i = 0; i < numP; i++)
 	{
-		pos.push_back(randomYDisk(1.f, 0,5,0));
+		pos.push_back(randomYDisk(1.f, x_,y_,z_));
 		vel.push_back(glm::vec3());
 		life.push_back(random(1,5));
 		size.push_back(1.f);
@@ -42,7 +45,7 @@ void Particle::computePhy(float dt)
 	numP += toGen;
 	for (int i = toGen - 1; i >= 0; i--)
 	{
-		pos.push_back(randomYDisk(1.f, 0, 5, 0));
+		pos.push_back(randomYDisk(1.f, x_, y_, z_));
 		vel.push_back(glm::vec3());
 		life.push_back(random(1, 5));
 		size.push_back(1.f);

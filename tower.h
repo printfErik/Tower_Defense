@@ -18,6 +18,7 @@
 #include "glm/gtc/type_ptr.hpp"
 
 #include "bullet.h"
+#include "Particle.h"
 
 class Tower
 {
@@ -55,6 +56,8 @@ public:
 	{
 		return T_type_;
 	}
+
+	Particle* particle_;
 private:
 	int T_type_;
 	int tower_level_;

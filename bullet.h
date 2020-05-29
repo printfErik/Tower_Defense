@@ -19,11 +19,17 @@ public:
 			real = glm::vec3(target->ePos.x, 0.5, target->ePos.y);
 			parameter = 1.f;
 		}
-		else
+		else if (bullet_type == 2)
 		{
 			damage = 300.f;
 			real = glm::vec3(target->ePos.x, 4, target->ePos.y);
 			parameter = 0.5f;
+		}
+		else if (bullet_type == 3)
+		{
+			damage = 400.f;
+			real = glm::vec3(target->ePos.x, 0.5, target->ePos.y);
+			parameter = 0.6f;
 		}
 	};
 	int bullet_type;

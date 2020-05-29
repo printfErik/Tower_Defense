@@ -77,7 +77,7 @@ public:
 	void nextObstacle();
 	void lastObstacle();
 	void moveObstacle(int type);
-	void obsLock();
+	bool obsLock();
 	void deleteObstacle();
 
 	void upgradeTower();
@@ -85,7 +85,18 @@ public:
 
 	void fire();
 
+	void printMsg(const std::string msg) {
+		game_msg = msg;
+		game_msg_time = SDL_GetTicks();
+	};
+	std::string getMsg() { return game_msg; };
+	size_t getMsgTime() { return game_msg_time; };
+
 private:
+
+	std::string game_msg;
+	size_t game_msg_time;
+
 	float max_speed = 1.f;
 	float agent_radius = 0.5f;
 	float goal_speed = 10;

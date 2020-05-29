@@ -27,11 +27,20 @@
 class Particle
 {
 public:
-	Particle(int n);
+	Particle(int n,float x, float y, float z);
 	int numP;
 	float genRate;
-	int maxP = 500;
+	int maxP = 200;
+	float x_;
+	float y_;
+	float z_;
 
+	void genPos(float x, float y, float z)
+	{
+		x_ = x;
+		y_ = y;
+		z_ = z;
+	}
 	std::vector<glm::vec3> pos;
 	std::vector<glm::vec3> vel;
 	glm::vec3 acc;

@@ -11,6 +11,7 @@ Tower::Tower(int type, glm::vec3 t_pos)
 	timer1 = SDL_GetTicks();
 	tower_level_ = 1;
 	frequency_ = 2000.f;
+	
 }
 
 void Tower::upgrade()
@@ -24,10 +25,10 @@ void Tower::upgrade()
 	if (T_type_ == 1)
 	{
 		tower_level_++;
-		frequency_ /= 2.f;
+		frequency_ /= 2.3f;
 		radius_ += 50.f;
 	}
-	else if (T_type_ == 1)
+	else if (T_type_ == 2)
 	{
 		radius_ += 100.f;
 	}
@@ -62,7 +63,21 @@ void Tower::shot()
 		new_bullet->alpha = 0;
 		bullets.push_back(new_bullet);
 	}
-
+	else if (T_type_ == 3)
+	{
+		//Mix_PlayChannel(-1, sp, 0);
+		
+		//particle_ = new Particle(200, );
+		if (numBullets > 0) { return; }
+		numBullets += 1;
+		Bullet* new_bullet = new Bullet(3, target_);
+		glm::vec3 muzzle = glm::vec3(30.f, 25.f, target_->ePos.y);
+		particle_ = new Particle(200, muzzle.x,muzzle.y,muzzle.z);
+		new_bullet->b_pos = muzzle;
+		new_bullet->init_pos = muzzle;
+		new_bullet->alpha = 0;
+		bullets.push_back(new_bullet);
+	}
 }
 
 void Tower::update(float dt)
@@ -93,7 +108,7 @@ bool Tower::hasTarget()
 	{
 		return false;
 	}
-	if (target_->isDead)
+	if (target_->isDead || target_->isGoal)
 	{
 		target_ = NULL;
 		return false;

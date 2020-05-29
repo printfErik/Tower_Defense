@@ -36,7 +36,8 @@ int screen_height = 980;
 
 int phase = 0;
 bool can_enter_next_phase = false;
-size_t enemy_to_be_added = 10;
+size_t enemy_to_be_added = 10, march_for_level = 1;
+size_t march_tick = 0;
 
 bool SHOW_PATH = false;
 bool APP_START = false;
@@ -133,7 +134,7 @@ float aspect; //aspect ratio (needs to be updated if the window is resized)
 Camera* camera;
 SPath* path;
 
-GLuint tex0[3];
+GLuint tex0[9];
 
 int num_verts_cylinder;
 int num_verts_floor;
@@ -205,10 +206,62 @@ std::vector<tinyobj::real_t> loadModel(const char* filename) {
 	return model;
 }
 
+void gameLogic()
+{
+	if (phase == 1 && march_for_level == path->econ_system_->level && enemy_to_be_added > 0) {
+		if (path->enemys_.size() == 0) {
+			path->March();
+			march_tick = SDL_GetTicks();
+			enemy_to_be_added -= 1;
+		}
+		else if (SDL_GetTicks() - march_tick >= 1000) {
+			std::cout << "fefe" << std::endl;
+			path->March();
+			march_tick = SDL_GetTicks();
+			enemy_to_be_added -= 1;
+		}
+
+		if (enemy_to_be_added == 0)
+			march_for_level += 1;
+	}
+
+	if (phase == 1 && march_for_level > path->econ_system_->level&& path->enemys_.size() <= 0) {
+		phase = 0;
+		path->econ_system_->level += 1;
+	}
+}
+
 void drawText(GLuint textShaderProgram)
 {
-	Font::renderText(textShaderProgram, "Test!", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8, 0.2));
-	Font::renderText(textShaderProgram, "Smaller!", 625.0f, 525.0f, 0.2f, glm::vec3(0.5, 0.8, 0.2));
+	//Font::renderText(textShaderProgram, "Test!", 25.0f, 25.0f, 1.0f, glm::vec3(0.5, 0.8, 0.2));
+	//Font::renderText(textShaderProgram, "Smaller!", 625.0f, 525.0f, 0.2f, glm::vec3(0.5, 0.8, 0.2));
+	glm::vec3 info_color = glm::vec3(0.78, 0.72, 0.17), title_color = glm::vec3(0.54, 0.78, 0.91);
+
+	//std::string title = "Round " + std::to_string(path->econ_system_->level) + ": ";
+	//title = path->BUILD_MOD ? title + "Building Phase" : title + "Defense Phase";
+	//Font::renderText(textShaderProgram, title, 550.0f, 900.0f, 0.5f, info_color);
+
+	std::string title = "Level " + std::to_string(path->econ_system_->level);
+	title = (phase % 2 == 0) ? title + ": Building Phase" : title + ": Defending Phase";
+	Font::renderText(textShaderProgram, title, 550.0f, 900.0f, 0.5f, info_color);
+
+	std::string health = "HP: " + std::to_string(path->econ_system_->player_health);
+	Font::renderText(textShaderProgram, health, 20.0f, 900.0f, 0.5f, info_color);
+
+	std::string money = "Gold: " + std::to_string(path->econ_system_->global_net) + " (Developer Mode) ";
+	Font::renderText(textShaderProgram, money, 160.0f, 900.0f, 0.5f, info_color);
+	//std::cout << money << std::endl;
+
+	std::string tower_cost = "Tower cost: " + std::to_string(path->econ_system_->tower1_cost);
+	Font::renderText(textShaderProgram, tower_cost, 1050.0f, 900.0f, 0.5f, info_color);
+
+	std::string ob_cost = "Obstacle cost: " + std::to_string(path->econ_system_->obstacle_cost);
+	Font::renderText(textShaderProgram, ob_cost, 1050.0f, 860.0f, 0.5f, info_color);
+
+	std::string game_msg;
+	if (SDL_GetTicks() - path->getMsgTime() <= 6000)
+		game_msg = path->getMsg();
+	Font::renderText(textShaderProgram, game_msg, 300.0f, 50.0f, 0.5f, info_color);
 }
 
 void draw(float dt) {
@@ -238,6 +291,7 @@ void draw(float dt) {
 		glDrawArrays(GL_POINTS, 0, 2 * path->n_edges_);
 	}
 
+	glBindTexture(GL_TEXTURE_2D, tex0[6]);
 	glBindVertexArray(vao[5]);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[5]);
 	model = glm::mat4();
@@ -246,9 +300,10 @@ void draw(float dt) {
 	model = glm::rotate(model, glm::radians(45.f), glm::vec3(0, 1, 0));
 	glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 	glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.8, 0.4, 0.1)));
-	glUniform1i(uniType, 1);
+	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_core);
 
+	glBindTexture(GL_TEXTURE_2D, tex0[6]);
 	glBindVertexArray(vao[6]);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[6]);
 	for (int i = 0; i < path->numEnemy; i++)
@@ -270,11 +325,12 @@ void draw(float dt) {
 		}
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 		//glm::vec3 player_col = glm::vec3(1.0, 0.0, 0.0);
-		glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(1.0, 0.0, 0.0)));
-		glUniform1i(uniType, 1);
+		glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(139.f/255.f, 69.f/255.f, 19.f/255.f)));
+		glUniform1i(uniType, 2);
 		glDrawArrays(GL_TRIANGLES, 0, num_verts_AA);
 	}
 
+	//glBindTexture(GL_TEXTURE_2D, tex0[7]);
 	glBindVertexArray(vao[3]);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[3]);
 	for (int i = 0; i < path->o_pos.size(); i++)
@@ -285,23 +341,25 @@ void draw(float dt) {
 		model = glm::scale(model, glm::vec3(path->o_radius[i], 1, path->o_radius[i]));
 		glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 		if (i == path->PICKED) glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(1.0, 1.0, 0.0)));
-		else glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 0.0, 1.0)));
+		else glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(139.f / 255.f, 69.f / 255.f, 19.f / 255.f)));
 		glUniform1i(uniType, 1);
 		glDrawArrays(GL_TRIANGLES, 0, num_verts_cylinder);
 	}
+
 
 	for (int i = 0; i < path->numTower; i++)
 	{
 		if (path->towers_[i]->getTowerType() == 1)
 		{
+			glBindTexture(GL_TEXTURE_2D, tex0[3]);
 			glBindVertexArray(vao[4]);
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[4]);
 			model = glm::mat4();
 			model = glm::translate(model, glm::vec3(path->towers_[i]->tower_pos.x, path->towers_[i]->tower_pos.y, path->towers_[i]->tower_pos.z));
-			model = glm::scale(model, (1.f + 0.2f * (float)(path->towers_[i]->getLevel())) * glm::vec3(1.f, 1.f, 1.f));
+			model = glm::scale(model, (0.7f + 0.2f * (float)(path->towers_[i]->getLevel())) * glm::vec3(1.f, 1.f, 1.f));
 			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 			glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
-			glUniform1i(uniType, 4);
+			glUniform1i(uniType, 2);
 			glDrawArrays(GL_TRIANGLES, 0, num_verts_tower1);
 
 			for (int b = 0; b < path->towers_[i]->numBullets; b++)
@@ -313,11 +371,13 @@ void draw(float dt) {
 				model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
 				glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 				glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 0.0, 0.0)));
+				glUniform1i(uniType, 1);
 				glDrawArrays(GL_TRIANGLES, 0, num_verts_sphere);
 			}
 		}
 		else if (path->towers_[i]->getTowerType() == 2)
 		{
+			glBindTexture(GL_TEXTURE_2D, tex0[4]);
 			glBindVertexArray(vao[8]);
 			glBindBuffer(GL_ARRAY_BUFFER, vbo[8]);
 			model = glm::mat4();
@@ -326,7 +386,7 @@ void draw(float dt) {
 			model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 1, 0));
 			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 			glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
-			glUniform1i(uniType, 4);
+			glUniform1i(uniType, 2);
 			glDrawArrays(GL_TRIANGLES, 0, num_verts_ten);
 
 			for (int b = 0; b < path->towers_[i]->numBullets; b++)
@@ -335,10 +395,59 @@ void draw(float dt) {
 				glBindBuffer(GL_ARRAY_BUFFER, vbo[7]);
 				model = glm::mat4();
 				model = glm::translate(model, glm::vec3(path->towers_[i]->bullets[b]->b_pos.x, path->towers_[i]->bullets[b]->b_pos.y, path->towers_[i]->bullets[b]->b_pos.z));
-				model = glm::scale(model, glm::vec3(1.2f, 1.2f, 1.2f));
+				model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));
 				glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
 				glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 0.0, 0.0)));
+				glUniform1i(uniType, 2);
 				glDrawArrays(GL_TRIANGLES, 0, num_verts_sp);
+			}
+		}
+		else if (path->towers_[i]->getTowerType() == 3)
+		{
+			glBindTexture(GL_TEXTURE_2D, tex0[8]);
+			glBindVertexArray(vao[2]);
+			glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+			model = glm::mat4();
+			model = glm::translate(model, glm::vec3(path->towers_[i]->tower_pos.x, path->towers_[i]->tower_pos.y, path->towers_[i]->tower_pos.z));
+			model = glm::scale(model, (2.f + 0.2f * (float)(path->towers_[i]->getLevel())) * glm::vec3(1.f, 1.f, 1.f));
+			model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 1, 0));
+			model = glm::rotate(model, glm::radians(90.f), glm::vec3(0, 0, 1));
+			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+			glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
+			glUniform1i(uniType, 2);
+			glDrawArrays(GL_TRIANGLES, 0, num_verts_sphere);
+
+			for (int b = 0; b < path->towers_[i]->numBullets; b++)
+			{
+				glBindTexture(GL_TEXTURE_2D, tex0[2]);
+				glBindVertexArray(vao[2]);
+				glBindBuffer(GL_ARRAY_BUFFER, vbo[2]);
+				model = glm::mat4();
+				model = glm::translate(model, glm::vec3(path->towers_[i]->bullets[b]->b_pos.x, path->towers_[i]->bullets[b]->b_pos.y, path->towers_[i]->bullets[b]->b_pos.z));
+				model = glm::scale(model, glm::vec3(1.f, 1.f, 1.f));
+				glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+				glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(1.0, 0.64, 0.0)));
+				glUniform1i(uniType, 2);
+				glDrawArrays(GL_TRIANGLES, 0, num_verts_sphere);
+
+				if (path->FIREON)
+				{
+					for (int p = 0; p < path->particle_->pos.size(); p++)
+					{
+						glBindTexture(GL_TEXTURE_2D, tex0[2]);
+						glBindVertexArray(vao[9]);
+						glBindBuffer(GL_ARRAY_BUFFER, vbo[9]);
+						model = glm::mat4();
+						model = glm::translate(model, path->particle_->pos[p] + path->towers_[i]->bullets[b]->b_pos);
+						model = glm::scale(model, 0.2f * (float)path->particle_->size[p] * glm::vec3(1.f, 1.f, 1.f));
+						model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 1, 0));
+						glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
+						glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
+						glUniform1i(uniType, 2);
+						glDrawArrays(GL_TRIANGLES, 0, num_verts_square);
+					}
+				}
+				
 			}
 		}
 	}
@@ -359,17 +468,19 @@ void draw(float dt) {
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
 	model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 0, 1));
 	glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-	glUniform1i(uniType, 4);
+	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	model = glm::mat4();
 	model = glm::translate(model, glm::vec3(-300, 0, 0));
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
 	model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 0, 1));
 	glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-	//glUniform1i(uniType, 2);
+	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	model = glm::mat4();
 	model = glm::translate(model, glm::vec3(0, 0, 300));
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
@@ -379,7 +490,7 @@ void draw(float dt) {
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
 
-	
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	model = glm::mat4();
 	model = glm::translate(model, glm::vec3(0, 0, -300));
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
@@ -388,6 +499,7 @@ void draw(float dt) {
 	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	model = glm::mat4();
 	model = glm::translate(model, glm::vec3(0, -300, 0));
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
@@ -396,6 +508,7 @@ void draw(float dt) {
 	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
+	glBindTexture(GL_TEXTURE_2D, tex0[0]);
 	model = glm::mat4();
 	model = glm::translate(model, glm::vec3(0, 300, 0));
 	model = glm::scale(model, 30.f * glm::vec3(1, 1, 1));
@@ -404,23 +517,8 @@ void draw(float dt) {
 	glUniform1i(uniType, 2);
 	glDrawArrays(GL_TRIANGLES, 0, num_verts_floor);
 
-	if (path->FIREON)
-	{
-		for (int i = 0; i < path->particle_->pos.size(); i++)
-		{
-			glBindTexture(GL_TEXTURE_2D, tex0[2]);
-			glBindVertexArray(vao[9]);
-			glBindBuffer(GL_ARRAY_BUFFER, vbo[9]);
-			model = glm::mat4();
-			model = glm::translate(model, path->particle_->pos[i]);
-			model = glm::scale(model, 0.2f * (float)path->particle_->size[i] * glm::vec3(1.f, 1.f, 1.f));
-			model = glm::rotate(model, glm::radians(-90.f), glm::vec3(0, 1, 0));
-			glUniformMatrix4fv(uniModel, 1, GL_FALSE, glm::value_ptr(model));
-			glUniform3fv(uniColor, 1, glm::value_ptr(glm::vec3(0.0, 1.0, 0.0)));
-			glUniform1i(uniType, 2);
-			glDrawArrays(GL_TRIANGLES, 0, num_verts_square);
-		}
-	}
+
+	
 		
 }
 
@@ -492,7 +590,7 @@ int main(int argc, char** argv) {
 
 	auto surface = SDL_LoadBMP("space.bmp");
 	
-	glGenTextures(3, tex0);
+	glGenTextures(9, tex0);
 
 	//glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex0[0]);
@@ -517,7 +615,7 @@ int main(int argc, char** argv) {
 
 	SDL_FreeSurface(surface2);
 
-	auto surface3 = SDL_LoadBMP("fire.bmp");
+	auto surface3 = SDL_LoadBMP("fire2.bmp");
 	glBindTexture(GL_TEXTURE_2D, tex0[2]);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -527,6 +625,65 @@ int main(int argc, char** argv) {
 
 	SDL_FreeSurface(surface3);
 
+	auto surface4 = SDL_LoadBMP("rock.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[3]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface4->w, surface4->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface4->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface4);
+
+	auto surface5 = SDL_LoadBMP("wood.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[4]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface5->w, surface5->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface5->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface5);
+
+	auto surface6 = SDL_LoadBMP("wood2.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[5]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface6->w, surface6->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface6->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface6);
+
+	auto surface7 = SDL_LoadBMP("texture1.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[6]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface7->w, surface7->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface7->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface7);
+
+	auto surface8 = SDL_LoadBMP("texture2.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[7]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface8->w, surface8->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface8->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface8);
+
+	auto surface9 = SDL_LoadBMP("eye.bmp");
+	glBindTexture(GL_TEXTURE_2D, tex0[8]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, surface9->w, surface9->h, 0, GL_BGRA,
+		GL_UNSIGNED_BYTE, surface9->pixels);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	SDL_FreeSurface(surface9);
 
 	std::vector<tinyobj::real_t> cylinder_model = loadModel("objects/cylinder.obj");
 	num_verts_cylinder = cylinder_model.size() / 8;
@@ -687,7 +844,7 @@ int main(int argc, char** argv) {
 	GLint texLoc = glGetUniformLocation(textShaderProgram, "tex0");
 	glUniform1i(texLoc, 1);
 
-	glm::mat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 600.0f);
+	glm::mat4 projection = glm::ortho(0.0f, (float)screen_width, 0.0f, (float)screen_height);
 	textUniProj = glGetUniformLocation(textShaderProgram, "proj");
 	glUniformMatrix4fv(textUniProj, 1, GL_FALSE, glm::value_ptr(projection));
 
@@ -925,6 +1082,13 @@ int main(int argc, char** argv) {
 				path->DeleteAll();
 				path->init();
 				APP_START = true;
+				/*
+				if (phase % 2 == 0) {
+					path->DeleteAll();
+					path->init();
+					APP_START = true;
+				}
+				*/
 			}
 			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_b)
 			{
@@ -975,9 +1139,19 @@ int main(int argc, char** argv) {
 			}
 			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_LCTRL)
 			{
-				path->obsLock();
-				path->BUILD_MOD = false;
-				path->PICKED = -1;
+				//path->obsLock();
+				//path->BUILD_MOD = false;
+				//path->PICKED = -1;
+				if (phase % 2 == 0 &&  path->obsLock()) {
+					path->BUILD_MOD = false;
+					path->PICKED = -1;
+					path->DeleteAll();
+					path->init();
+					APP_START = true;
+
+					phase = 1;
+					enemy_to_be_added = 10 + path->econ_system_->level;
+				}
 			}
 			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_LSHIFT)
 			{
@@ -991,6 +1165,10 @@ int main(int argc, char** argv) {
 			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_2)
 			{
 				path->buildTower(path->PICKED, 2);
+			}
+			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_3)
+			{
+				path->buildTower(path->PICKED, 3);
 			}
 			if (windowEvent.type == SDL_KEYDOWN && windowEvent.key.keysym.sym == SDLK_x)
 			{
@@ -1011,8 +1189,10 @@ int main(int argc, char** argv) {
 		// Clear the screen to default color
 		glClearColor(0.5f, 0.5f, 0.5f, 0.5f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		dt = 0.002;
+		dt = 0.005;
 		
+		gameLogic();
+
 		glUseProgram(shaderProgram);
 		glActiveTexture(GL_TEXTURE0);
 		draw(dt);
